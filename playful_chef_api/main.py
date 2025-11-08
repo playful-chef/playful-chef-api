@@ -1,6 +1,6 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from playful_chef_api import models, schemas, crud
 from playful_chef_api.database import engine, get_db
@@ -17,14 +17,33 @@ app = FastAPI(
 
 
 @app.get("/recipes", response_model=List[schemas.Recipe])
-async def get_random_recipes(db: Session = Depends(get_db), limit: int = 10):
+async def get_random_recipes(
+    db: Session = Depends(get_db),
+    limit: int = 10,
+    ingredients: Optional[List[str]] = Query(
+        None, description="Filter recipes by ingredients"
+    ),
+):
     """
     Get random recipes from the database.
 
     - **limit**: Number of random recipes to return (default: 10)
+    - **ingredients**: Optional list of ingredients to filter recipes
     """
-    recipes = crud.get_random_recipes(db, limit=limit)
+    if ingredients:
+        print(ingredients)
+        recipes = crud.get_recipes_by_ingredients(
+            db, ingredient_names=ingredients, limit=limit
+        )
+    else:
+        recipes = crud.get_random_recipes(db, limit=limit)
+
     return recipes
+
+
+@app.get("/recipes/{id}", response_model=schemas.Recipe)
+async def get_recipe_by_id(id: int, db: Session = Depends(get_db)):
+    return crud.get_recipe_by_id(db, id=id)
 
 
 @app.get("/ingredients", response_model=List[schemas.Ingredient])

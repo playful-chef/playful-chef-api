@@ -18,8 +18,6 @@ class Recipe(Base):
     title = Column(Text, nullable=False)
     directions = Column(Text)
     link = Column(Text)
-    source = Column(Text)
-    site = Column(Text)
 
     # Relationship to ingredients through the association table
     ingredients = relationship(
