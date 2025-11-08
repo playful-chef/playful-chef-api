@@ -9,14 +9,17 @@ readme = "README.md"
 python = "^3.12"
 fastapi = "^0.121.0"
 uvicorn = "^0.38.0"
+sqlalchemy = "^2.0.44"
+pydantic = "^2.12.4"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.9.1"
 pre-commit = "^3.4.0"
 ruff = "^0.0.291"
+pandas = "^2.3.3"
 
 [tool.poetry.scripts]
-start = "fastapi_sample.main:app"
+start = "playful_chef_api.main:app"
 
 [build-system]
 requires = ["poetry-core"]

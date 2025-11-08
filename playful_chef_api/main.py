@@ -1,20 +1,38 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
+from sqlalchemy.orm import Session
+from typing import List
+
+from playful_chef_api import models, schemas, crud
+from playful_chef_api.database import engine, get_db
+
+# Create database tables
+models.Base.metadata.create_all(bind=engine)
 
 # Create FastAPI application instance
 app = FastAPI(
-    title="Sample FastAPI App",
-    description="A simple FastAPI application with one handler",
+    title="Recipe API",
+    description="A FastAPI application for recipes with SQLite database",
     version="1.0.0",
 )
 
 
-# Define a simple handler
-@app.get("/")
-async def read_root():
-    return {"message": "Welcome to FastAPI!", "status": "success"}
+@app.get("/recipes", response_model=List[schemas.Recipe])
+async def get_random_recipes(db: Session = Depends(get_db), limit: int = 10):
+    """
+    Get random recipes from the database.
+
+    - **limit**: Number of random recipes to return (default: 10)
+    """
+    recipes = crud.get_random_recipes(db, limit=limit)
+    return recipes
 
 
-# Add another handler for demonstration
-@app.get("/hello/{name}")
-async def say_hello(name: str):
-    return {"message": f"Hello, {name}!", "greeting": "Welcome to our API"}
+@app.get("/ingredients", response_model=List[schemas.Ingredient])
+async def get_ingredients(db: Session = Depends(get_db)):
+    """
+    Get random recipes from the database.
+
+    - **limit**: Number of random recipes to return (default: 10)
+    """
+    ingredients = crud.get_all_ingredients(db)
+    return ingredients
