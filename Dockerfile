@@ -1,10 +1,10 @@
-FROM python:3.12
+FROM python:3.14-alpine
 
 WORKDIR /app
 
 # install dependencies
 COPY ./requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
+RUN ["pip", "install", "--no-cache-dir", "--upgrade", "-r", "/app/requirements.txt"]
 
 COPY ./playful_chef_api /app/playful_chef_api
 COPY ./data/database.db /app/data/database.db

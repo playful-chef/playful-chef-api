@@ -25,3 +25,10 @@ Run in docker:
 ```sh
 docker-compose up --build
 ```
+
+Run in podman:
+
+```sh
+podman build -t playful_chef_api:latest .
+podman run -p 8000:80 -it playful_chef_api:latest
+```
