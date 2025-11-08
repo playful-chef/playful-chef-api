@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "playful-chef-api"
+version = "0.1.0"
+description = ""
+authors = ["vklepov <vklepov@ozon.ru>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.121.0"
+uvicorn = "^0.38.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.9.1"
+pre-commit = "^3.4.0"
+ruff = "^0.0.291"
+
+[tool.poetry.scripts]
+start = "fastapi_sample.main:app"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
