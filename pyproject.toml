@@ -17,6 +17,7 @@ black = "^23.9.1"
 pre-commit = "^3.4.0"
 ruff = "^0.0.291"
 pandas = "^2.3.3"
+podman-compose = "^1.5.0"
 
 [tool.poetry.scripts]
 start = "playful_chef_api.main:app"

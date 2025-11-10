@@ -1,0 +1,3 @@
+:80 {
+    reverse_proxy /dickbutt playful_chef_api:8000
+}
