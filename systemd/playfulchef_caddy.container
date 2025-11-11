@@ -6,6 +6,7 @@ Wants=playfulchef_api.service
 [Container]
 Image=docker.io/caddy:2-alpine
 Pod=playfulchef.pod
+Environment=HOST=api.thoughtspile.tech
 Volume=../caddy/conf:/etc/caddy:ro
 Volume=caddy_data:/data
 Volume=caddy_config:/config

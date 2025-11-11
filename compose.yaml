@@ -1,12 +1,17 @@
 name: playful_chef_app
 services:
-  playful_chef_api:
-    # build: .
+  playfulchef_api:
+    build: .
     image: playful_chef_api:latest
   caddy:
     image: caddy:2-alpine
     command: caddy run --watch --config /etc/caddy/Caddyfile
+    environment:
+      HOST: localhost:8080
     ports:
-      - "8080:80"
+      - "8080:8080"
     volumes:
       - ./caddy/conf:/etc/caddy:ro
+      - caddy-data:/data
+volumes:
+  caddy-data:
