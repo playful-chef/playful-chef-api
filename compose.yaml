@@ -1,7 +1,7 @@
 name: playful_chef_app
 services:
   playful_chef_api:
-    build: .
+    # build: .
     image: playful_chef_api:latest
   caddy:
     image: caddy:2-alpine

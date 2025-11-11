@@ -1,0 +1,10 @@
+[Unit]
+Description=Python API
+
+[Container]
+AutoUpdate=registry
+Image=ghcr.io/playful-chef/playful-chef-api:latest
+Pod=playfulchef.pod
+
+[Service]
+Restart=always

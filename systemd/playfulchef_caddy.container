@@ -1,0 +1,14 @@
+[Unit]
+Description=Reverse proxy
+After=local-fs.target
+Wants=playfulchef_api.service
+
+[Container]
+Image=docker.io/caddy:2-alpine
+Pod=playfulchef.pod
+Volume=../caddy/conf:/etc/caddy:ro
+Volume=caddy_data:/data
+Volume=caddy_config:/config
+
+[Service]
+Restart=always
