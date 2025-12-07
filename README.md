@@ -7,10 +7,10 @@ poetry install
 poetry run pre-commit install
 ```
 
-Prepare data: download and extract [kaggle dataset](https://www.kaggle.com/datasets/wilmerarltstrmberg/recipe-dataset-over-2m), then convert to SQLite:
+Prepare data: pull submodule, then convert to SQLite:
 
 ```sh
-cp "<extracted csv path>" ./data/recipes_data.csv
+git submodule update --init --recursive
 poetry run python3 data/csv_to_sqlite.py
 ```
 
