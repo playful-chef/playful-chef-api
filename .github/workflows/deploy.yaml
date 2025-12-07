@@ -22,4 +22,5 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
             systemctl daemon-reload
+            sudo podman auto-update
             systemctl restart playfulchef-pod.service
