@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Text, Table, ForeignKey
+from sqlalchemy import Column, Integer, Float, Text, Table, ForeignKey
 from sqlalchemy.orm import relationship
 from playful_chef_api.database import Base
 
@@ -7,6 +7,8 @@ recipe_ingredient = Table(
     "recipe_ingredients",
     Base.metadata,
     Column("recipe_id", Integer, ForeignKey("recipes.id"), primary_key=True),
+    Column("qty", Float),
+    Column("unit", Text),
     Column("ingredient_id", Integer, ForeignKey("ingredients.id"), primary_key=True),
 )
 
