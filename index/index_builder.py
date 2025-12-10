@@ -37,9 +37,10 @@ class RecipeVectorDB:
         documents = []
         for row in df.itertuples():
             doc = Document(page_content=row.embedding_text)
-            doc.metadata["index_in_db"] = row.embedding_text
+            doc.metadata["title"] = row.title
             doc.metadata["url"] = row.url
             doc.metadata["description"] = row.description
+            doc.metadata["ingredients"] = row.ingredients
             documents.append(doc)
 
         # Создаем FAISS индекс

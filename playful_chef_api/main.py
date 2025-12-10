@@ -4,9 +4,10 @@ from typing import List, Optional
 
 from playful_chef_api import models, schemas, crud
 from playful_chef_api.database import engine, get_db
-from playful_chef_api.model import RecipeAgent
+from playful_chef_api.model import RAGAgent
 
-Agent = RecipeAgent()
+
+Agent = RAGAgent()
 
 # Create database tables
 models.Base.metadata.create_all(bind=engine)
@@ -18,26 +19,6 @@ app = FastAPI(
     version="1.0.0",
 )
 inputs = {"messages": []}
-
-
-@app.get("/agent", response_model=schemas.AgentMessage)
-async def get_agent_recipes(
-    db: Session = Depends(get_db),
-    user_message: str = Query(..., description="Сообщение пользователя"),
-    user_id: int = Query(..., description="ID пользователя"),
-):
-    inputs["messages"].append({"role": "user", "content": user_message})
-
-    response = Agent.invoke(inputs, db)
-
-    inputs["messages"].append(
-        {"role": "user", "assistant": response["messages"][-1].content}
-    )
-    return schemas.AgentMessage(
-        user_message=user_message,
-        user_id=user_id,
-        agent_response=response["messages"][-1].content,
-    )
 
 
 @app.get("/recipes", response_model=List[schemas.Recipe])
@@ -61,6 +42,8 @@ async def get_random_recipes(
         )
     else:
         recipes = crud.get_random_recipes(db, limit=limit)
+
+    Agent.go_rag(ingredients)
 
     return recipes
 
