@@ -84,9 +84,10 @@ class RAGAgent:
         )  # загрузка локальной бд
 
     def go_rag(self, query: str, k=3):
-        docs = self.index.similarity_search_with_score(query, k=k)
-        docs_sorted = sorted(docs, key=lambda x: x[1])
-        return [doc[0].page_content for doc in docs_sorted]
+        if isinstance(query, list):
+            query = " ".join(query)
+        docs = self.index.as_retriever().invoke(query, k=k)
+        return docs
 
 
 class RecipeAgent:
