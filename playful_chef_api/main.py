@@ -4,6 +4,10 @@ from typing import List, Optional
 
 from playful_chef_api import models, schemas, crud
 from playful_chef_api.database import engine, get_db
+from playful_chef_api.model import RAGAgent
+
+
+Agent = RAGAgent()
 
 # Create database tables
 models.Base.metadata.create_all(bind=engine)
@@ -14,6 +18,7 @@ app = FastAPI(
     description="A FastAPI application for recipes with SQLite database",
     version="1.0.0",
 )
+inputs = {"messages": []}
 
 
 @app.get("/recipes", response_model=List[schemas.Recipe])
@@ -37,6 +42,15 @@ async def get_random_recipes(
         )
     else:
         recipes = crud.get_random_recipes(db, limit=limit)
+
+    dishes_from_rag = Agent.go_rag(ingredients)
+    rag_message = ""
+    for dish in dishes_from_rag:
+        rag_message += (
+            f'{dish.metadata["title"]}'
+            f'\n{dish.metadata["description"]}'
+            f'\n{dish.metadata["url"]}'
+        )
 
     return recipes
 

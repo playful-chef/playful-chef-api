@@ -24,3 +24,9 @@ class Recipe(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class AgentMessage(BaseModel):
+    user_message: str
+    user_id: int
+    agent_response: str
