@@ -43,7 +43,14 @@ async def get_random_recipes(
     else:
         recipes = crud.get_random_recipes(db, limit=limit)
 
-    Agent.go_rag(ingredients)
+    dishes_from_rag = Agent.go_rag(ingredients)
+    rag_message = ""
+    for dish in dishes_from_rag:
+        rag_message += (
+            f'{dish.metadata["title"]}'
+            f'\n{dish.metadata["description"]}'
+            f'\n{dish.metadata["url"]}'
+        )
 
     return recipes
 
