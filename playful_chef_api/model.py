@@ -8,19 +8,20 @@ from typing import List
 from langgraph.prebuilt import create_react_agent
 import yaml
 import openai
-
-
-url = "https://api.mistral.ai/v1"
-api_key = "vHbKd2pQPuz6H8uCzF7bFv3wYeIB6Yle"
-model = "mistral-small-latest"
-index_path = "index/faiss_index"
-embedder_path = "index/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-
-llm = ChatOpenAI(base_url=url, api_key=api_key, model=model, temperature=0.5)
+import os
+from sentence_transformers import SentenceTransformer
 
 
 with open("playful_chef_api/config.yml", "r", encoding="utf-8") as file:
     config = yaml.load(file, Loader=yaml.FullLoader)
+
+url = config["url"]
+api_key = os.getenv("LLM_API_KEY")
+llm_model = config["llm_model"]
+index_path = config["index_path"]
+embedder_path = config["embedder_path"]
+
+llm = ChatOpenAI(base_url=url, api_key=api_key, model=llm_model, temperature=0.5)
 
 
 class RagInput(BaseModel):
@@ -82,7 +83,10 @@ class RagResponseFormat(BaseModel):
 
 class RAGAgent:
     def __init__(self, index_path, embedder_path):
+        if not os.path.exists("index/sentence-transformers"):
+            self.download_model()
         self.embedder = HuggingFaceEmbeddings(model_name=embedder_path)
+
         self.index = FAISS.load_local(
             index_path, self.embedder, allow_dangerous_deserialization=True
         )  # загрузка локальной бд
@@ -93,12 +97,19 @@ class RAGAgent:
         docs = self.index.as_retriever().invoke(query, k=k)
         return docs
 
+    @staticmethod
+    def download_model():
+        print("Загружаем эмбеддинг-модель с HuggingFace")
+        model_name = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+        embedding_model = SentenceTransformer(model_name)
+        embedding_model.save(embedder_path)
+
 
 class RecipeAgent:
     def __init__(self):
         self.db = None
         self.llm = ChatOpenAI(
-            base_url=url, api_key=api_key, model=model, temperature=0.5
+            base_url=url, api_key=api_key, model=llm_model, temperature=0.5
         )
         self.client = openai.OpenAI(base_url=url, api_key=api_key)
 
@@ -130,13 +141,9 @@ class RecipeAgent:
 
             dishes = [i.page_content for i in context]
 
-            system_prompt = """
-            У тебя есть список блюд. Выбери самое подходящее под запрос пользователя.
-            Верни только номер блюда.
-            Номер начинается с 0
-            """
+            system_prompt = config["choose_one_recipe_prompt"]
             params = {
-                "model": model,  # Имя модели для локального сервера
+                "model": llm_model,
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {
@@ -145,7 +152,7 @@ class RecipeAgent:
                         f"Список блюд: {dishes}",
                     },
                 ],
-                "temperature": 0.1,
+                "temperature": 0.3,
                 "max_tokens": 200,
             }
             response = self.client.chat.completions.parse(
@@ -161,16 +168,6 @@ class RecipeAgent:
                 f'\n{best_dish.metadata["url"]}'
             )
 
-            # system_prompt = config["rag_prompt"]
-            # prompt_template = ChatPromptTemplate.from_messages(
-            #     [("system", system_prompt), ("human", "{query}")]
-            # )
-            #
-            # formatted_prompt = prompt_template.format_messages(
-            #     context=context, query=query
-            # )
-            #
-            # response = self.llm.invoke(formatted_prompt)
             return message
 
         return get_recipes_from_rag
@@ -185,14 +182,15 @@ class RecipeAgent:
             parse_docstring=True,
             description=config["get_recipes_from_db_description"],
         )
-        def get_recipes_from_db(ingredient_names: List[str]) -> List:
+        def get_recipes_from_db(ingredient_names: List[str]) -> str:
             print("get_recipes_from_db")
 
             # Вызываем функцию поиска
             response = get_recipes_by_ingredients(
                 self.db, ingredient_names=ingredient_names
             )
-            return [f"{i.title}\n{i.link}" for i in response]
+            result = [f"{i.title}\n{i.link}" for i in response]
+            return "\n".join(result)
 
         return get_recipes_from_db
 
