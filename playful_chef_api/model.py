@@ -7,7 +7,7 @@ from crud import get_recipes_by_ingredients
 from typing import List
 from langgraph.prebuilt import create_react_agent
 import yaml
-from langchain_core.prompts import ChatPromptTemplate
+import openai
 
 
 url = "https://api.mistral.ai/v1"
@@ -76,6 +76,10 @@ class DataBaseInput(BaseModel):
     )
 
 
+class RagResponseFormat(BaseModel):
+    dish_id: int = Field(..., description="Номер самого подходящего блюда")
+
+
 class RAGAgent:
     def __init__(self, index_path, embedder_path):
         self.embedder = HuggingFaceEmbeddings(model_name=embedder_path)
@@ -96,6 +100,7 @@ class RecipeAgent:
         self.llm = ChatOpenAI(
             base_url=url, api_key=api_key, model=model, temperature=0.5
         )
+        self.client = openai.OpenAI(base_url=url, api_key=api_key)
 
         # Инициализация RAG
         self.rag_agent = RAGAgent(index_path=index_path, embedder_path=embedder_path)
@@ -123,17 +128,50 @@ class RecipeAgent:
 
             context = self.rag_agent.go_rag(query=query)
 
-            system_prompt = config["rag_prompt"]
-            prompt_template = ChatPromptTemplate.from_messages(
-                [("system", system_prompt), ("human", "{query}")]
+            dishes = [i.page_content for i in context]
+
+            system_prompt = """
+            У тебя есть список блюд. Выбери самое подходящее под запрос пользователя.
+            Верни только номер блюда.
+            Номер начинается с 0
+            """
+            params = {
+                "model": model,  # Имя модели для локального сервера
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {
+                        "role": "user",
+                        "content": f"Вопрос пользователя {query}\n"
+                        f"Список блюд: {dishes}",
+                    },
+                ],
+                "temperature": 0.1,
+                "max_tokens": 200,
+            }
+            response = self.client.chat.completions.parse(
+                **params, response_format=RagResponseFormat
+            )
+            dish_id = response.choices[0].message.parsed.dish_id
+
+            best_dish = context[dish_id]
+
+            message = (
+                f'{best_dish.metadata["title"]}'
+                f'\n{best_dish.metadata["description"]}'
+                f'\n{best_dish.metadata["url"]}'
             )
 
-            formatted_prompt = prompt_template.format_messages(
-                context=context, query=query
-            )
-
-            response = self.llm.invoke(formatted_prompt)
-            return response.content
+            # system_prompt = config["rag_prompt"]
+            # prompt_template = ChatPromptTemplate.from_messages(
+            #     [("system", system_prompt), ("human", "{query}")]
+            # )
+            #
+            # formatted_prompt = prompt_template.format_messages(
+            #     context=context, query=query
+            # )
+            #
+            # response = self.llm.invoke(formatted_prompt)
+            return message
 
         return get_recipes_from_rag
 

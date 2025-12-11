@@ -26,13 +26,10 @@ async def get_agent_recipes(
     user_message: str = Query(..., description="Сообщение пользователя"),
     user_id: int = Query(..., description="ID пользователя"),
 ):
-    inputs["messages"].append({"role": "user", "content": user_message})
+    inputs = {"messages": [{"role": "user", "content": user_message}]}
 
     response = Agent.invoke(inputs, db)
 
-    inputs["messages"].append(
-        {"role": "user", "assistant": response["messages"][-1].content}
-    )
     return schemas.AgentMessage(
         user_message=user_message,
         user_id=user_id,
