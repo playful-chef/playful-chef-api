@@ -192,7 +192,7 @@ class RecipeAgent:
             response = get_recipes_by_ingredients(
                 self.db, ingredient_names=ingredient_names
             )
-            return [i.directions for i in response]
+            return [f"{i.title}\n{i.link}" for i in response]
 
         return get_recipes_from_db
 
