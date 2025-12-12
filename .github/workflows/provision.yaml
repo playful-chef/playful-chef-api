@@ -16,4 +16,4 @@ jobs:
           envs: LLM_API_KEY
           script: |
             dnf -y install podman
-            podman secret create --env=true llmapikey $LLM_API_KEY
+            podman secret create --env=true llmapikey LLM_API_KEY
