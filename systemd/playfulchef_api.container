@@ -6,6 +6,7 @@ ContainerName=playfulchef_api
 Image=ghcr.io/playful-chef/playful-chef-api:latest
 AutoUpdate=registry
 Pod=playfulchef.pod
+Secret=llmapikey,type=env,target=LLM_API_KEY
 
 [Service]
 Restart=always
