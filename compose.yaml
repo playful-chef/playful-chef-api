@@ -3,6 +3,10 @@ services:
   playfulchef_api:
     build: .
     image: playful_chef_api:latest
+    environment:
+      - LLM_API_KEY=${LLM_API_KEY}
+    volumes:
+      - ./index/sentence-transformers:/app/index/sentence-transformers
   caddy:
     image: caddy:2-alpine
     command: caddy run --watch --config /etc/caddy/Caddyfile

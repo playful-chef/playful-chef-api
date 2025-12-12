@@ -4,6 +4,9 @@ from typing import List, Optional
 
 from playful_chef_api import models, schemas, crud
 from playful_chef_api.database import engine, get_db
+from playful_chef_api.model import RecipeAgent
+
+Agent = RecipeAgent()
 
 # Create database tables
 models.Base.metadata.create_all(bind=engine)
@@ -14,6 +17,24 @@ app = FastAPI(
     description="A FastAPI application for recipes with SQLite database",
     version="1.0.0",
 )
+inputs = {"messages": []}
+
+
+@app.get("/agent", response_model=schemas.AgentMessage)
+async def get_agent_recipes(
+    db: Session = Depends(get_db),
+    user_message: str = Query(..., description="Сообщение пользователя"),
+    user_id: int = Query(..., description="ID пользователя"),
+):
+    inputs = {"messages": [{"role": "user", "content": user_message}]}
+
+    response = Agent.invoke(inputs, db)
+
+    return schemas.AgentMessage(
+        user_message=user_message,
+        user_id=user_id,
+        agent_response=response["messages"][-1].content,
+    )
 
 
 @app.get("/recipes", response_model=List[schemas.Recipe])

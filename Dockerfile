@@ -1,4 +1,4 @@
-FROM python:3.14-alpine
+FROM python:3.12-slim-trixie
 
 WORKDIR /app
 
@@ -8,6 +8,7 @@ RUN ["pip", "install", "--no-cache-dir", "--upgrade", "-r", "/app/requirements.t
 
 COPY ./playful_chef_api /app/playful_chef_api
 COPY ./data/database.db /app/data/database.db
+COPY ./index/faiss_index/ /app/index/faiss_index/
 
 EXPOSE 8000
 CMD ["uvicorn", "playful_chef_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
