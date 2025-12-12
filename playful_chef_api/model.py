@@ -88,7 +88,9 @@ class RAGAgent:
         )
 
         self.index = FAISS.load_local(
-            index_path, self.embedder, allow_dangerous_deserialization=True
+            index_path,
+            lambda a: self.embedder.encode(a),
+            allow_dangerous_deserialization=True,
         )  # загрузка локальной бд
 
     def go_rag(self, query: str, k=3):
