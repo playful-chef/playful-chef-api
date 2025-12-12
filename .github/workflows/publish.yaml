@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - "main"
+      - "agent"
   workflow_dispatch: # Added for manual trigger
 
 permissions:
