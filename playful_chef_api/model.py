@@ -2,14 +2,13 @@ from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 from langchain.tools import tool
 from langchain_community.vectorstores import FAISS
-from langchain_huggingface import HuggingFaceEmbeddings
-from crud import get_recipes_by_ingredients
+from playful_chef_api.crud import get_recipes_by_ingredients
 from typing import List
 from langgraph.prebuilt import create_react_agent
 import yaml
 import openai
 import os
-from sentence_transformers import SentenceTransformer
+from light_embed import TextEmbedding
 
 
 with open("playful_chef_api/config.yml", "r", encoding="utf-8") as file:
@@ -20,8 +19,6 @@ api_key = os.getenv("LLM_API_KEY")
 llm_model = config["llm_model"]
 index_path = config["index_path"]
 embedder_path = config["embedder_path"]
-
-llm = ChatOpenAI(base_url=url, api_key=api_key, model=llm_model, temperature=0.5)
 
 
 class RagInput(BaseModel):
@@ -83,9 +80,12 @@ class RagResponseFormat(BaseModel):
 
 class RAGAgent:
     def __init__(self, index_path, embedder_path):
-        if not os.path.exists("index/sentence-transformers"):
-            self.download_model()
-        self.embedder = HuggingFaceEmbeddings(model_name=embedder_path)
+        model_name = "onnx-models/paraphrase-multilingual-MiniLM-L12-v2-onnx"
+        self.embedder = TextEmbedding(
+            model_name,
+            model_config={"onnx_file": "model.onnx"},
+            cache_folder="index/sentence-transformers",
+        )
 
         self.index = FAISS.load_local(
             index_path, self.embedder, allow_dangerous_deserialization=True
@@ -96,13 +96,6 @@ class RAGAgent:
             query = " ".join(query)
         docs = self.index.as_retriever().invoke(query, k=k)
         return docs
-
-    @staticmethod
-    def download_model():
-        print("Загружаем эмбеддинг-модель с HuggingFace")
-        model_name = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-        embedding_model = SentenceTransformer(model_name)
-        embedding_model.save(embedder_path)
 
 
 class RecipeAgent:
@@ -121,7 +114,7 @@ class RecipeAgent:
 
         # Создаем агента
         self.agent = create_react_agent(
-            model=llm, tools=self.tools, prompt=config["agent_prompt"]
+            model=self.llm, tools=self.tools, prompt=config["agent_prompt"]
         )
 
     def _create_rag_tool(self):
@@ -163,9 +156,9 @@ class RecipeAgent:
             best_dish = context[dish_id]
 
             message = (
-                f'{best_dish.metadata["title"]}'
-                f'\n{best_dish.metadata["description"]}'
-                f'\n{best_dish.metadata["url"]}'
+                f"{best_dish.metadata['title']}"
+                f"\n{best_dish.metadata['description']}"
+                f"\n{best_dish.metadata['url']}"
             )
 
             return message
