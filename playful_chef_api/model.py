@@ -80,12 +80,14 @@ class RagResponseFormat(BaseModel):
 
 class RAGAgent:
     def __init__(self, index_path, embedder_path):
+        print("Init embedder...")
         model_name = "onnx-models/paraphrase-multilingual-MiniLM-L12-v2-onnx"
         self.embedder = TextEmbedding(
             model_name,
             model_config={"onnx_file": "model.onnx"},
             cache_folder="index/sentence-transformers",
         )
+        print("Embedder ready")
 
         self.index = FAISS.load_local(
             index_path,
