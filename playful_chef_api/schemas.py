@@ -29,4 +29,4 @@ class Recipe(BaseModel):
 class AgentMessage(BaseModel):
     user_message: str
     user_id: int
-    agent_response: str
+    agent_response: dict
