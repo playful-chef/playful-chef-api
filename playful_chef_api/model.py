@@ -2,13 +2,13 @@ from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 from langchain.tools import tool
 from langchain_community.vectorstores import FAISS
-from playful_chef_api.crud import get_recipes_by_ingredients
 from typing import List
 from langgraph.prebuilt import create_react_agent
 import yaml
 import openai
 import os
 from light_embed import TextEmbedding
+from playful_chef_api import crud
 
 
 with open("playful_chef_api/config.yml", "r", encoding="utf-8") as file:
@@ -80,14 +80,14 @@ class RagResponseFormat(BaseModel):
 
 class RAGAgent:
     def __init__(self, index_path, embedder_path):
-        print("Init embedder...")
+        print("Инициализируем эмбеддер...")
         model_name = "onnx-models/paraphrase-multilingual-MiniLM-L12-v2-onnx"
         self.embedder = TextEmbedding(
             model_name,
             model_config={"onnx_file": "model.onnx"},
             cache_folder="index/sentence-transformers",
         )
-        print("Embedder ready")
+        print("Эмбеддер готов")
 
         self.index = FAISS.load_local(
             index_path,
@@ -131,7 +131,7 @@ class RecipeAgent:
             parse_docstring=True,
             description=config["get_recipes_from_rag_description"],
         )
-        def get_recipes_from_rag(query: str) -> str:
+        def get_recipes_from_rag(query: str):
             print("get_recipes_from_rag")
 
             context = self.rag_agent.go_rag(query=query)
@@ -159,13 +159,7 @@ class RecipeAgent:
 
             best_dish = context[dish_id]
 
-            message = (
-                f"{best_dish.metadata['title']}"
-                f"\n{best_dish.metadata['description']}"
-                f"\n{best_dish.metadata['url']}"
-            )
-
-            return message
+            return self._build_recipe_payload(best_dish)
 
         return get_recipes_from_rag
 
@@ -183,7 +177,7 @@ class RecipeAgent:
             print("get_recipes_from_db")
 
             # Вызываем функцию поиска
-            response = get_recipes_by_ingredients(
+            response = crud.get_recipes_by_ingredients(
                 self.db, ingredient_names=ingredient_names
             )
             result = [f"{i.title}\n{i.link}" for i in response]
@@ -195,3 +189,46 @@ class RecipeAgent:
         """Вызов агента"""
         self.db = db
         return self.agent.invoke(inputs)
+
+    def _build_recipe_payload(self, doc) -> dict:
+        """Вернуть структурированный рецепт: сначала из БД по id, иначе из метаданных индекса."""
+        metadata = getattr(doc, "metadata", {}) or {}
+        recipe_id = metadata.get("id")
+
+        recipe = None
+        if recipe_id is not None and self.db is not None:
+            try:
+                recipe = crud.get_recipe_by_id(self.db, id=int(recipe_id))
+            except Exception:
+                recipe = None
+
+        if recipe:
+            return {
+                "id": recipe.id,
+                "title": recipe.title,
+                "link": recipe.link,
+                "directions": recipe.directions,
+                "ingredients": [
+                    {"id": ingredient.id, "name": ingredient.name}
+                    for ingredient in recipe.ingredients
+                ],
+                "description": metadata.get("description"),
+                "categories": metadata.get("categories"),
+                "total_time": metadata.get("total_time"),
+                "servings": metadata.get("servings"),
+                "source_url": metadata.get("url"),
+            }
+
+        # Резерв: берем данные из метаданных индекса
+        return {
+            "id": recipe_id,
+            "title": metadata.get("title"),
+            "link": metadata.get("url"),
+            "directions": metadata.get("directions"),
+            "ingredients": metadata.get("ingredients"),
+            "description": metadata.get("description"),
+            "categories": metadata.get("categories"),
+            "total_time": metadata.get("total_time"),
+            "servings": metadata.get("servings"),
+            "source_url": metadata.get("url"),
+        }
