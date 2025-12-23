@@ -42,11 +42,19 @@ async def get_agent_recipes(
     inputs = {"messages": [{"role": "user", "content": user_message}]}
 
     response = Agent.invoke(inputs, db)
+    content = response["messages"][-1].content
+    if isinstance(content, str):
+        try:
+            import json
+
+            content = json.loads(content)
+        except Exception:
+            pass
 
     return schemas.AgentMessage(
         user_message=user_message,
         user_id=user_id,
-        agent_response=response["messages"][-1].content,
+        agent_response=content,
     )
 
 
