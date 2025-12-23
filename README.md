@@ -33,3 +33,5 @@ Run in podman:
 ```sh
 poetry run podman-compose up --build -d
 ```
+
+Dockerfile строит `database.db` и FAISS-индекс внутри образа (используя `data/recipe-parser/data/output/recipes.tsv`). Индекс/БД не лежат в репозитории.
