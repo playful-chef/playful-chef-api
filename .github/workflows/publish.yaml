@@ -2,8 +2,6 @@ name: publish
 
 on:
   push:
-    branches:
-      - "main"
   workflow_dispatch: # Added for manual trigger
 
 permissions:
@@ -15,6 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
+          submodules: true
           lfs: true
       - name: Build
         id: build-image
