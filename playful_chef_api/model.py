@@ -180,8 +180,7 @@ class RecipeAgent:
             response = crud.get_recipes_by_ingredients(
                 self.db, ingredient_names=ingredient_names
             )
-            result = [f"{i.title}\n{i.link}" for i in response]
-            return "\n".join(result)
+            return response[0]
 
         return get_recipes_from_db
 
@@ -191,7 +190,7 @@ class RecipeAgent:
         return self.agent.invoke(inputs)
 
     def _build_recipe_payload(self, doc) -> dict:
-        """Вернуть структурированный рецепт: сначала из БД по id, иначе из метаданных индекса."""
+        """Вернуть структурированный рецепт: из БД по id или из индекса."""
         metadata = getattr(doc, "metadata", {}) or {}
         recipe_id = metadata.get("id")
 
