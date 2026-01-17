@@ -6,6 +6,7 @@ WORKDIR /app
 COPY ./requirements.txt /app/requirements.txt
 RUN ["pip", "install", "--no-cache-dir", "--upgrade", "-r", "/app/requirements.txt"]
 
+# app code and data/scripts
 COPY ./playful_chef_api /app/playful_chef_api
 COPY ./data/database.db /app/data/database.db
 COPY ./index/faiss_index/ /app/index/faiss_index/

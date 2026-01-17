@@ -1,12 +1,15 @@
-from fastapi import FastAPI, Depends, Query
-from sqlalchemy.orm import Session
+import os
 from typing import List, Optional
+
+from fastapi import FastAPI, Depends, Query, HTTPException
+from sqlalchemy.orm import Session
 
 from playful_chef_api import models, schemas, crud
 from playful_chef_api.database import engine, get_db
 from playful_chef_api.model import RecipeAgent
 
-Agent = RecipeAgent()
+# Отложенная инициализация агента, чтобы сервер поднимался без LLM_API_KEY
+Agent: RecipeAgent | None = None
 
 # Create database tables
 models.Base.metadata.create_all(bind=engine)
@@ -23,17 +26,35 @@ inputs = {"messages": []}
 @app.get("/agent", response_model=schemas.AgentMessage)
 async def get_agent_recipes(
     db: Session = Depends(get_db),
-    user_message: str = Query(..., description="Сообщение пользователя"),
-    user_id: int = Query(..., description="ID пользователя"),
+    user_message: str = Query(..., description="РЎР?Р?Р+С%РчР?РёРч РїР?Р>С?Р·Р?Р?Р°С'РчР>С?"),
+    user_id: int = Query(..., description="ID РїР?Р>С?Р·Р?Р?Р°С'РчР>С?"),
 ):
+    global Agent
+    if Agent is None:
+        api_key = os.getenv("LLM_API_KEY")
+        if not api_key:
+            raise HTTPException(
+                status_code=503,
+                detail="LLM_API_KEY не задан: эндпоинт /agent недоступен локально.",
+            )
+        Agent = RecipeAgent()
+
     inputs = {"messages": [{"role": "user", "content": user_message}]}
 
     response = Agent.invoke(inputs, db)
+    content = response["messages"][-1].content
+    if isinstance(content, str):
+        try:
+            import json
+
+            content = json.loads(content)
+        except Exception:
+            pass
 
     return schemas.AgentMessage(
         user_message=user_message,
         user_id=user_id,
-        agent_response=response["messages"][-1].content,
+        agent_response=content,
     )
 
 
