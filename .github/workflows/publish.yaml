@@ -15,6 +15,11 @@ jobs:
         with:
           submodules: true
           lfs: true
+      - name: process data
+        run: |
+          pip install -r requirements.txt
+          python data/csv_to_sqlite.py
+          python index/index_builder.py
       - name: Build
         id: build-image
         uses: redhat-actions/buildah-build@v2

@@ -72,7 +72,9 @@ class RecipeVectorDB:
                 "total_time": row.total_time,
                 "servings": row.servings,
             }
-            documents.append(Document(page_content=row.embedding_text, metadata=metadata))
+            documents.append(
+                Document(page_content=row.embedding_text, metadata=metadata)
+            )
 
         # Собираем и сохраняем FAISS-индекс
         print("Создаем FAISS индекс")
@@ -104,7 +106,7 @@ class RecipeVectorDB:
 
 if __name__ == "__main__":
     print("Запускаем сборку индекса")
-    df = pd.read_csv("../data/recipe-parser/data/output/recipes.tsv", sep="\t")
+    df = pd.read_csv("./data/recipe-parser/data/output/recipes.tsv", sep="\t")
     index_builder = RecipeVectorDB(
         model_path="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     )
