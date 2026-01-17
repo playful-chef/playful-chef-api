@@ -20,6 +20,7 @@ langchain-huggingface = "^1.1.0"
 light-embed = "^1.0.8"
 langchain-community = "^0.4.1"
 faiss-cpu = "^1.13.1"
+tqdm = "^4.67.1"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.9.1"

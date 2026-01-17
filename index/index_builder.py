@@ -1,7 +1,9 @@
 import pandas as pd
 import numpy as np
+from typing import List
 from langchain_community.vectorstores import FAISS
 from light_embed import TextEmbedding
+from tqdm import tqdm
 from langchain_core.documents import Document
 
 # Колонки, которые убираем перед индексированием (как в подготовке БД)
@@ -15,6 +17,20 @@ COLUMNS_TO_DROP = [
     "calories",
     "calories_total",
 ]
+
+
+class LightEmbedWrapper:
+    def __init__(self, model: TextEmbedding):
+        self.model = model
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        # Assuming TextEmbedding.embed returns a list of embeddings for a list of texts
+        embeddings = []
+        for text in tqdm(texts, desc="Embedding documents"):
+            # Assuming TextEmbedding.embed can handle a single text
+            embedding = self.model.encode([text])[0]
+            embeddings.append(embedding)
+        return embeddings
 
 
 def create_text_for_embedding(row: dict) -> str:
@@ -40,10 +56,12 @@ def create_text_for_embedding(row: dict) -> str:
 
 class RecipeVectorDB:
     def __init__(self, model_path: str):
-        self.model = TextEmbedding(
-            model_path,
-            model_config={"onnx_file": "model.onnx"},
-            cache_folder="index/sentence-transformers",
+        self.model = LightEmbedWrapper(
+            TextEmbedding(
+                model_path,
+                model_config={"onnx_file": "model.onnx"},
+                cache_folder="index/sentence-transformers",
+            )
         )
         self.index = None
         self.recipes_data = None
@@ -82,8 +100,8 @@ class RecipeVectorDB:
 
         # Собираем и сохраняем FAISS-индекс
         print("Создаем FAISS индекс")
-        self.index = FAISS.from_documents(documents, lambda a: self.model.encode(a))
-        self.index.save_local("faiss_index")
+        self.index = FAISS.from_documents(documents, self.model)
+        self.index.save_local("index/faiss_index")
         print("Индекс сохранен")
 
     def search_similar(self, query: str, k: int = 5):
