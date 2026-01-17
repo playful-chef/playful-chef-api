@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from langchain_community.vectorstores import FAISS
-from langchain_huggingface import HuggingFaceEmbeddings
+from light_embed import TextEmbedding
 from langchain_core.documents import Document
 
 # Колонки, которые убираем перед индексированием (как в подготовке БД)
@@ -40,7 +40,11 @@ def create_text_for_embedding(row: dict) -> str:
 
 class RecipeVectorDB:
     def __init__(self, model_path: str):
-        self.model = HuggingFaceEmbeddings(model_name=model_path)
+        self.model = TextEmbedding(
+            model_path,
+            model_config={"onnx_file": "model.onnx"},
+            cache_folder="index/sentence-transformers",
+        )
         self.index = None
         self.recipes_data = None
 
@@ -78,7 +82,7 @@ class RecipeVectorDB:
 
         # Собираем и сохраняем FAISS-индекс
         print("Создаем FAISS индекс")
-        self.index = FAISS.from_documents(documents, self.model)
+        self.index = FAISS.from_documents(documents, lambda a: self.model.encode(a))
         self.index.save_local("faiss_index")
         print("Индекс сохранен")
 
@@ -108,6 +112,6 @@ if __name__ == "__main__":
     print("Запускаем сборку индекса")
     df = pd.read_csv("./data/recipe-parser/data/output/recipes.tsv", sep="\t")
     index_builder = RecipeVectorDB(
-        model_path="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+        model_path="onnx-models/paraphrase-multilingual-MiniLM-L12-v2-onnx"
     )
     index_builder.create_index(df=df)
