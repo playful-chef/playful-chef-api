@@ -26,7 +26,7 @@ def get_recipe_by_id(db: Session, id: int):
 
 
 def get_recipes_by_ingredients(
-    db: Session, ingredient_names: list[str], cutoff: float = 0.5, limit: int = 10
+    db: Session, ingredient_names: list[str], cutoff: float = 0.9, limit: int = 10
 ):
     """
     Returns recipes where at least 'cutoff' ingredients are in ingredient_names.

@@ -26,7 +26,9 @@ inputs = {"messages": []}
 @app.get("/agent", response_model=schemas.AgentMessage)
 async def get_agent_recipes(
     db: Session = Depends(get_db),
-    user_message: str = Query(..., description="РЎР?Р?Р+С%РчР?РёРч РїР?Р>С?Р·Р?Р?Р°С'РчР>С?"),
+    user_message: str = Query(
+        ..., description="РЎР?Р?Р+С%РчР?РёРч РїР?Р>С?Р·Р?Р?Р°С'РчР>С?"
+    ),
     user_id: int = Query(..., description="ID РїР?Р>С?Р·Р?Р?Р°С'РчР>С?"),
 ):
     global Agent

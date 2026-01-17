@@ -8,7 +8,7 @@ import yaml
 import openai
 import os
 from light_embed import TextEmbedding
-from playful_chef_api import crud
+from playful_chef_api import crud, schemas
 
 
 with open("playful_chef_api/config.yml", "r", encoding="utf-8") as file:
@@ -53,23 +53,27 @@ class RagInput(BaseModel):
 
 
 class DataBaseInput(BaseModel):
+    raw_query: str = Field(description="Исходный запрос пользователя")
     ingredient_names: list[str] = Field(
         description="""Список ингредиентов для поиска в традиционной БД.
 
-        КРИТИЧЕСКОЕ ПРАВИЛО: Извлекай ТОЛЬКО названия продуктов, никаких предлогов!
+        ---КРИТИЧЕСКИЕ ПРАВИЛА---
+        - Добавляй к ингредиентам синонимы
+        - Добавляй ингредиенты, которые есть у всех (соль, сахар, масло)
 
         Примеры ПРАВИЛЬНОГО преобразования:
-        • "Что приготовить из курицы и риса?" → ["курица", "рис"]
-        • "Рецепты с яйцами и молоком" → ["яйца", "молоко"]
-        • "Имею картофель, лук, морковь" → ["картофель", "лук", "морковь"]
+        • "Что приготовить из курицы и риса?"
+            → ["курица", "куриные грудки", "куриное филе", "рис"]
+        • "Рецепты с яйцами" → ["яйца", "яйцо", "куриные яйца"]
+        • "картофель, лук, морковь" → ["картофель", "лук", "морковь"]
         • "Блюда с говядиной" → ["говядина"]
-        • "паста с томатным соусом" → ["паста", "томатный соус"]
+        • "паста с томатным соусом" → ["паста", "макароны", "томат", "помидор"]
         """,
         examples=[
             ["курица", "рис"],
             ["яйца", "мука", "молоко"],
             ["картофель", "лук", "морковь", "мясо"],
-            ["паста", "сыр", "томаты"],
+            ["паста", "сыр", "томат", "помидор"],
         ],
     )
 
@@ -114,12 +118,33 @@ class RecipeAgent:
         self.rag_agent = RAGAgent(index_path=index_path, embedder_path=embedder_path)
 
         # Создаем инструменты
-        self.tools = [self._create_rag_tool(), self._create_db_tool()]
+        self.rag_tool = self._create_rag_tool()
+        self.tools = [self.rag_tool, self._create_db_tool()]
 
         # Создаем агента
         self.agent = create_react_agent(
             model=self.llm, tools=self.tools, prompt=config["agent_prompt"]
         )
+
+    def pick_one_dish_id(self, query: str, dishes: List) -> int:
+        print("pick_best_dish", query, len(dishes))
+        system_prompt = config["choose_one_recipe_prompt"]
+        params = {
+            "model": llm_model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {
+                    "role": "user",
+                    "content": f"Вопрос пользователя {query}\nСписок блюд: {dishes}",
+                },
+            ],
+            "temperature": 0.3,
+            "max_tokens": 200,
+        }
+        response = self.client.chat.completions.parse(
+            **params, response_format=RagResponseFormat
+        )
+        return response.choices[0].message.parsed.dish_id
 
     def _create_rag_tool(self):
         """Создает инструмент для RAG поиска"""
@@ -131,32 +156,19 @@ class RecipeAgent:
             parse_docstring=True,
             description=config["get_recipes_from_rag_description"],
         )
-        def get_recipes_from_rag(query: str):
-            print("get_recipes_from_rag")
+        def get_recipes_from_rag(query: str) -> dict | None:
+            print("get_recipes_from_rag", query)
 
             context = self.rag_agent.go_rag(query=query)
-
             dishes = [i.page_content for i in context]
 
-            system_prompt = config["choose_one_recipe_prompt"]
-            params = {
-                "model": llm_model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {
-                        "role": "user",
-                        "content": f"Вопрос пользователя {query}\n"
-                        f"Список блюд: {dishes}",
-                    },
-                ],
-                "temperature": 0.3,
-                "max_tokens": 200,
-            }
-            response = self.client.chat.completions.parse(
-                **params, response_format=RagResponseFormat
-            )
-            dish_id = response.choices[0].message.parsed.dish_id
+            if dishes == []:
+                return """
+                    No recipes found in DB.
+                    Try searching by ingredients using get_recipes_from_rag.
+                """
 
+            dish_id = self.pick_one_dish_id(query, dishes)
             best_dish = context[dish_id]
 
             return self._build_recipe_payload(best_dish)
@@ -173,27 +185,22 @@ class RecipeAgent:
             parse_docstring=True,
             description=config["get_recipes_from_db_description"],
         )
-        def get_recipes_from_db(ingredient_names: List[str]) -> str:
-            print("get_recipes_from_db")
+        def get_recipes_from_db(
+            ingredient_names: List[str], raw_query: str
+        ) -> schemas.Recipe | None:
+            print("get_recipes_from_db", raw_query, ingredient_names)
 
             # Вызываем функцию поиска
             response = crud.get_recipes_by_ingredients(
                 self.db, ingredient_names=ingredient_names
             )
-            return {
-                "id": response[0].id,
-                "title": response[0].title,
-                "link": response[0].link,
-                "directions": response[0].directions,
-                "ingredients": [
-                    {"id": ingredient.id, "name": ingredient.name}
-                    for ingredient in response[0].ingredients
-                ],
-                # "description": response[0].description,
-                # "categories": response[0].categories,
-                # "total_time": response[0].total_time,
-                # "servings": response[0].servings,
-            }
+            parsed_recipes = [schemas.Recipe.model_validate(r) for r in response]
+
+            if parsed_recipes == []:
+                return self.rag_tool.invoke(raw_query)
+            top_recipe_id = self.pick_one_dish_id(raw_query, parsed_recipes)
+
+            return parsed_recipes[top_recipe_id].model_dump()
 
         return get_recipes_from_db
 
@@ -215,21 +222,7 @@ class RecipeAgent:
                 recipe = None
 
         if recipe:
-            return {
-                "id": recipe.id,
-                "title": recipe.title,
-                "link": recipe.link,
-                "directions": recipe.directions,
-                "ingredients": [
-                    {"id": ingredient.id, "name": ingredient.name}
-                    for ingredient in recipe.ingredients
-                ],
-                "description": metadata.get("description"),
-                "categories": metadata.get("categories"),
-                "total_time": metadata.get("total_time"),
-                "servings": metadata.get("servings"),
-                "source_url": metadata.get("url"),
-            }
+            return schemas.Recipe.model_validate(recipe).model_dump()
 
         # Резерв: берем данные из метаданных индекса
         return {
